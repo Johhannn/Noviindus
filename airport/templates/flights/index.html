@@ -1,0 +1,23 @@
+{% extends 'flights/base.html' %}
+{% block content %}
+  <div class="card p-4">
+    <h3>Routes</h3>
+    {% if routes %}
+      <ul class="list-group">
+        {% for r in routes %}
+          <li class="list-group-item">
+            <strong>{{ r.name }}</strong>
+            <small class="text-muted"> — {{ r.nodes.count }} nodes</small>
+            <ul class="mt-2">
+              {% for n in r.nodes.all %}
+                <li>{{ n.position }}: {{ n.airport_code }} — {{ n.duration }}m</li>
+              {% endfor %}
+            </ul>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No routes yet. Use "Create Route" then "Add Node".</p>
+    {% endif %}
+  </div>
+{% endblock %}

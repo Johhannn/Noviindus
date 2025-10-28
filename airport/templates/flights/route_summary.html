@@ -1,0 +1,36 @@
+{% extends 'flights/base.html' %}
+{% block content %}
+<div class="card p-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Route Summary</h3>
+    <a href="{% url 'flights:index' %}" class="btn btn-secondary">Back to Home</a>
+  </div>
+
+  {% if summary %}
+    <table class="table table-bordered table-striped">
+      <thead class="table-dark">
+        <tr>
+          <th>Route</th>
+          <th>Start Airport</th>
+          <th>End Airport</th>
+          <th>No. of Nodes</th>
+          <th>Total Duration (min)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in summary %}
+          <tr>
+            <td>{{ s.route_name }}</td>
+            <td>{{ s.start_airport }}</td>
+            <td>{{ s.end_airport }}</td>
+            <td>{{ s.num_nodes }}</td>
+            <td>{{ s.total_duration }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No routes available yet. Add some to view summary.</p>
+  {% endif %}
+</div>
+{% endblock %}

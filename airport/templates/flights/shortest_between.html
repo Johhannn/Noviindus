@@ -1,0 +1,21 @@
+{% extends 'flights/base.html' %}
+{% block content %}
+  <div class="card p-4">
+    <h3>Shortest Duration Between Two Airports</h3>
+    <form method="post">{% csrf_token %}
+      {{ form.as_p }}
+      <button class="btn btn-primary">Find Shortest</button>
+    </form>
+
+    {% if result %}
+      <div class="mt-3 alert alert-info">
+        Shortest between <strong>{{ form.cleaned_data.airport_a|default:'' }}</strong>
+        and <strong>{{ form.cleaned_data.airport_b|default:'' }}</strong>:
+        <div><strong>{{ result.total }} minutes</strong></div>
+        <div>Route: {{ result.route.name }}, positions: {{ result.posA }} → {{ result.posB }}</div>
+      </div>
+    {% elif result is not None %}
+      <p class="mt-3">No matching route found with both airports.</p>
+    {% endif %}
+  </div>
+{% endblock %}
