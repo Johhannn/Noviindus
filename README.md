@@ -56,18 +56,14 @@ Language: Python 3.10+
 python -m venv venv
 venv\Scripts\activate        # windows
 
-2️) Install dependencies
-pip install -r requirements.txt
-
-
-3️) Run migrations
+2) Run migrations
 python manage.py makemigrations
 python manage.py migrate
 
-4️) Create a superuser (optional)
+3) Create a superuser (optional)
 python manage.py createsuperuser
 
-5️) Start the development server
+4) Start the development server
 python manage.py runserver
 
 Now visit → http://127.0.0.1:8000/
