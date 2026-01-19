@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.db.models import Max, F
 from django.contrib import messages
 
-from .models import Route, AirportNode
+from .models import Route, FlightNode
 from .forms import AddRouteNodeForm, CreateRouteForm, NthSearchForm, ShortestBetweenForm
 
 def index(request):
@@ -28,13 +28,22 @@ def add_node(request):
         if form.is_valid():
             node = form.save(commit=False)
             
-            # ✅ Automatically assign next position if not given
-            if not node.position:
-                last_node = AirportNode.objects.filter(route=node.route).order_by('-position').first()
-                node.position = (last_node.position + 1) if last_node else 1
+            if node.node_type == 'root':
+                if FlightNode.objects.filter(route=node.route, node_type='root').exists():
+                    messages.error(request, f"Route {node.route.name} already has a Root node.")
+                    return render(request, 'flights/add_node.html', {'form': form})
+                node.parent = None
+            else:
+                if not node.parent:
+                   messages.error(request, "Non-root node must have a parent.")
+                   return render(request, 'flights/add_node.html', {'form': form})
+                
+                if FlightNode.objects.filter(parent=node.parent, node_type=node.node_type).exists():
+                    messages.error(request, f"Parent {node.parent.airport_code} already has a {node.get_node_type_display()} child.")
+                    return render(request, 'flights/add_node.html', {'form': form})
 
             node.save()
-            messages.success(request, f"Node added to route {node.route.name} at position {node.position}.")
+            messages.success(request, f"Node {node.airport_code} added to route {node.route.name}.")
             return redirect('flights:index')
     else:
         form = AddRouteNodeForm()
@@ -47,47 +56,46 @@ def search_nth_node(request):
         form = NthSearchForm(request.POST)
         if form.is_valid():
             route = form.cleaned_data['route']
-            current_pos = form.cleaned_data['current_position']
+            start_node = form.cleaned_data['start_node']
             n = form.cleaned_data['n']
             direction = form.cleaned_data['direction']
 
-            # compute target position
-            if direction == 'left':
-                target_pos = current_pos - n
+            current = start_node
+            if not current:
+                current = FlightNode.objects.filter(route=route, node_type='root').first()
+            
+            if not current:
+                 messages.warning(request, "Route has no root node.")
             else:
-                target_pos = current_pos + n
+                found = True
+                path = [current.airport_code]
+                for i in range(n):
+                    try:
+                        next_node = FlightNode.objects.get(parent=current, node_type=direction)
+                        current = next_node
+                        path.append(current.airport_code)
+                    except FlightNode.DoesNotExist:
+                        found = False
+                        break
+                
+                if found:
+                    result = current
+                    messages.success(request, f"Found: {result.airport_code}. Path: {' -> '.join(path)}")
+                else:
+                    messages.warning(request, f"No node found at {n} steps {direction}.")
 
-            try:
-                result = AirportNode.objects.get(route=route, position=target_pos)
-            except AirportNode.DoesNotExist:
-                result = None
-                messages.warning(request, f"No node at position {target_pos} for route {route.name}.")
     else:
         form = NthSearchForm()
     return render(request, 'flights/search_nth.html', {'form': form, 'result': result})
 
 
 def longest_nodes(request):
-    """
-    Shows, for each airport code present in any node, the node with the maximum duration.
-    Also show the overall longest node.
-    """
-    # For clarity: find longest node by airport_code
-    # use values + annotate
-    from django.db.models import Max
-    # Get distinct airport codes
-    airport_codes = AirportNode.objects.values_list('airport_code', flat=True).distinct()
-    longest_per_airport = []
-    for code in airport_codes:
-        node = AirportNode.objects.filter(airport_code=code).order_by('-duration').first()
-        if node:
-            longest_per_airport.append(node)
-
-    overall_longest = AirportNode.objects.order_by('-duration').first()
+    overall_longest = FlightNode.objects.order_by('-duration').first()
+    top_nodes = FlightNode.objects.order_by('-duration')[:5]
 
     return render(request, 'flights/longest_nodes.html', {
-        'longest_per_airport': longest_per_airport,
         'overall_longest': overall_longest,
+        'top_nodes': top_nodes,
     })
 
 
@@ -97,43 +105,38 @@ def shortest_between(request):
         form = ShortestBetweenForm(request.POST)
         if form.is_valid():
             route_limit = form.cleaned_data['route']
-            a = form.cleaned_data['airport_a'].strip().upper()
-            b = form.cleaned_data['airport_b'].strip().upper()
+            a_code = form.cleaned_data['airport_a'].strip()
+            b_code = form.cleaned_data['airport_b'].strip()
 
-            routes = Route.objects.all() if not route_limit else Route.objects.filter(pk=route_limit.pk)
-            shortest = None
-            shortest_route = None
+            routes = [route_limit] if route_limit else Route.objects.all()
+            
+            shortest_dist = None
+            shortest_path_info = None
+
             for route in routes:
-                # get nodes for this route indexed by airport_code -> possible multiple positions (choose first/each)
-                nodes = list(route.nodes.all().order_by('position'))
-                # build map airport_code -> list of positions (multiple stops of same airport possible)
-                pos_map = {}
-                for n in nodes:
-                    pos_map.setdefault(n.airport_code.upper(), []).append(n.position)
+                nodes_a = list(FlightNode.objects.filter(route=route, airport_code__iexact=a_code))
+                nodes_b = list(FlightNode.objects.filter(route=route, airport_code__iexact=b_code))
+                
+                if not nodes_a or not nodes_b:
+                    continue
 
-                if a in pos_map and b in pos_map:
-                    # For each pair of positions, evaluate travel time
-                    for pA in pos_map[a]:
-                        for pB in pos_map[b]:
-                            if pA == pB:
-                                total = 0.0
-                            else:
-                                start = min(pA, pB)
-                                end = max(pA, pB)
-                                # sum durations for positions start .. end-1 inclusive
-                                segment_nodes = [nd for nd in nodes if start <= nd.position < end]
-                                total = sum(nd.duration for nd in segment_nodes)
-                            if shortest is None or total < shortest:
-                                shortest = total
-                                shortest_route = {
+                for na in nodes_a:
+                    for nb in nodes_b:
+                        dist = calculate_tree_distance(na, nb)
+                        if dist is not None:
+                            if shortest_dist is None or dist < shortest_dist:
+                                shortest_dist = dist
+                                shortest_path_info = {
                                     'route': route,
-                                    'posA': pA,
-                                    'posB': pB,
-                                    'total': total,
+                                    'node_a': na,
+                                    'node_b': nb,
+                                    'distance': dist
                                 }
-            best_result = shortest_route
-            if best_result is None:
-                messages.warning(request, "No route contains both airports.")
+            
+            best_result = shortest_path_info
+            if not best_result:
+                messages.warning(request, "No path found between these airports.")
+
     else:
         form = ShortestBetweenForm()
 
@@ -142,20 +145,42 @@ def shortest_between(request):
         'result': best_result,
     })
 
+def calculate_tree_distance(node_a, node_b):
+    if node_a == node_b:
+        return 0.0
+    
+    ancestors_a = {}
+    curr = node_a
+    dist_from_a = 0.0
+    while curr:
+        ancestors_a[curr.id] = (curr, dist_from_a)
+        if curr.parent:
+            dist_from_a += curr.duration 
+        curr = curr.parent
+
+    curr = node_b
+    dist_from_b = 0.0
+    lca = None
+    
+    while curr:
+        if curr.id in ancestors_a:
+            lca = curr
+            break
+        if curr.parent:
+            dist_from_b += curr.duration
+        curr = curr.parent
+    
+    if lca:
+        dist_a_lca = ancestors_a[lca.id][1]
+        return dist_from_b + dist_a_lca
+    
+    return None
+
 def route_summary(request):
-    """Display each route with its total duration, start & end airports."""
     routes = Route.objects.all()
     summary = []
-
-    for route in routes:
-        nodes = route.nodes.all().order_by('position')
-        if nodes.exists():
-            summary.append({
-                'route_name': route.name,
-                'start_airport': nodes.first().airport_code,
-                'end_airport': nodes.last().airport_code,
-                'total_duration': route.total_duration(),
-                'num_nodes': nodes.count(),
-            })
-
+    for r in routes:
+        root = r.nodes.filter(node_type='root').first()
+        count = r.nodes.count()
+        summary.append({'route': r, 'root': root, 'count': count})
     return render(request, 'flights/route_summary.html', {'summary': summary})

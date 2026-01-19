@@ -1,4 +1,5 @@
 {% extends 'flights/base.html' %}
+
 {% block content %}
 <div class="card p-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
@@ -7,30 +8,32 @@
   </div>
 
   {% if summary %}
-    <table class="table table-bordered table-striped">
-      <thead class="table-dark">
-        <tr>
-          <th>Route</th>
-          <th>Start Airport</th>
-          <th>End Airport</th>
-          <th>No. of Nodes</th>
-          <th>Total Duration (min)</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for s in summary %}
-          <tr>
-            <td>{{ s.route_name }}</td>
-            <td>{{ s.start_airport }}</td>
-            <td>{{ s.end_airport }}</td>
-            <td>{{ s.num_nodes }}</td>
-            <td>{{ s.total_duration }}</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <table class="table table-bordered table-striped">
+    <thead class="table-dark">
+      <tr>
+        <th>Route Name</th>
+        <th>Root Airport</th>
+        <th>Total Nodes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in summary %}
+      <tr>
+        <td>{{ s.route.name }}</td>
+        <td>
+          {% if s.root %}
+          {{ s.root.airport_code }}
+          {% else %}
+          <span class="text-muted">No Root</span>
+          {% endif %}
+        </td>
+        <td>{{ s.count }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
   {% else %}
-    <p>No routes available yet. Add some to view summary.</p>
+  <p>No routes available yet. Add some to view summary.</p>
   {% endif %}
 </div>
 {% endblock %}

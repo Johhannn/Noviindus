@@ -1,26 +1,49 @@
 {% extends 'flights/base.html' %}
-{% block content %}
-  <div class="card p-4">
-    <h3>Longest Node(s) by Airport</h3>
-    {% if longest_per_airport %}
-      <ul class="list-group">
-        {% for node in longest_per_airport %}
-          <li class="list-group-item">
-            <strong>{{ node.airport_code }}</strong> — longest node: {{ node.duration }} minutes
-            <div class="text-muted">Route: {{ node.route.name }} | Position: {{ node.position }}</div>
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p>No nodes available yet.</p>
-    {% endif %}
 
-    {% if overall_longest %}
-      <div class="mt-3">
-        <h5>Overall Longest Node</h5>
-        <p><strong>{{ overall_longest.airport_code }}</strong> — {{ overall_longest.duration }} minutes
-           (Route: {{ overall_longest.route.name }}, Pos: {{ overall_longest.position }})</p>
-      </div>
-    {% endif %}
+{% block content %}
+<div class="card p-4">
+  <h3>Longest Node(s) by Duration</h3>
+
+  <div class="card mb-4 border-primary">
+    <div class="card-header bg-primary text-white">
+      Overall Longest Node
+    </div>
+    <div class="card-body">
+      {% if overall_longest %}
+      <h4 class="card-title">{{ overall_longest.airport_code }}</h4>
+      <p class="card-text">
+        Duration: <strong>{{ overall_longest.duration }}</strong>
+      </p>
+      <p class="text-muted">
+        Route: {{ overall_longest.route.name }}<br>
+        Type: {{ overall_longest.get_node_type_display }}
+        {% if overall_longest.parent %} (of {{ overall_longest.parent.airport_code }}) {% endif %}
+      </p>
+      {% else %}
+      <p>No nodes found.</p>
+      {% endif %}
+    </div>
   </div>
+
+  <h4>Top Longest Nodes</h4>
+  {% if top_nodes %}
+  <ul class="list-group">
+    {% for node in top_nodes %}
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+      <span>
+        <strong>{{ node.airport_code }}</strong> ({{ node.get_node_type_display }})
+        <small class="text-muted">- {{ node.route.name }}</small>
+      </span>
+      <span class="badge bg-primary rounded-pill">{{ node.duration }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>No nodes available.</p>
+  {% endif %}
+
+  <div class="mt-3">
+    <a href="{% url 'flights:index' %}" class="btn btn-secondary">Back</a>
+  </div>
+</div>
 {% endblock %}

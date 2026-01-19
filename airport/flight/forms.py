@@ -1,16 +1,23 @@
 from django import forms
-from .models import AirportNode, Route
+from .models import FlightNode, Route
 
 class AddRouteNodeForm(forms.ModelForm):
     class Meta:
-        model = AirportNode
-        fields = ['route', 'airport_code', 'position', 'duration']
+        model = FlightNode
+        fields = ['route', 'parent', 'airport_code', 'node_type', 'duration']
         widgets = {
             'route': forms.Select(),
+            'parent': forms.Select(),
             'airport_code': forms.TextInput(attrs={'placeholder': 'e.g., DEL'}),
-            'position': forms.NumberInput(),
+            'node_type': forms.Select(),
             'duration': forms.NumberInput(attrs={'step': '0.1'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['parent'].queryset = FlightNode.objects.all()
+        self.fields['parent'].required = False
+
 
 class CreateRouteForm(forms.ModelForm):
     class Meta:
@@ -19,8 +26,8 @@ class CreateRouteForm(forms.ModelForm):
 
 class NthSearchForm(forms.Form):
     route = forms.ModelChoiceField(queryset=Route.objects.all(), required=True)
-    current_position = forms.IntegerField(min_value=1, required=True)
-    n = forms.IntegerField(min_value=0, required=True, label="N (steps)")
+    start_node = forms.ModelChoiceField(queryset=FlightNode.objects.all(), required=False, label="Start Node (Default: Root)")
+    n = forms.IntegerField(min_value=1, required=True, label="N (steps)")
     direction = forms.ChoiceField(choices=[('left', 'Left'), ('right', 'Right')], required=True)
 
 class ShortestBetweenForm(forms.Form):

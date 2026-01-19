@@ -1,19 +1,24 @@
 {% extends 'flights/base.html' %}
-{% block content %}
-  <div class="card p-4">
-    <h3>Find Nth Left or Right Node</h3>
-    <form method="post">{% csrf_token %}
-      {{ form.as_p }}
-      <button class="btn btn-primary">Search</button>
-    </form>
 
-    {% if result %}
-      <div class="mt-3 alert alert-success">
-        Found node: <strong>{{ result.airport_code }}</strong>
-        <div>Route: {{ result.route.name }}</div>
-        <div>Position: {{ result.position }}</div>
-        <div>Duration (to next): {{ result.duration }} minutes</div>
-      </div>
+{% block content %}
+<div class="card p-4">
+  <h3>Find Nth Left or Right Node</h3>
+  <form method="post">{% csrf_token %}
+    {{ form.as_p }}
+    <button class="btn btn-primary">Search</button>
+    <a href="{% url 'flights:index' %}" class="btn btn-secondary">Back</a>
+  </form>
+
+  {% if result %}
+  <div class="mt-3 alert alert-success">
+    <h4>Found Node: {{ result.airport_code }}</h4>
+    <div><strong>Route:</strong> {{ result.route.name }}</div>
+    <div><strong>Type:</strong> {{ result.get_node_type_display }}</div>
+    {% if result.parent %}
+    <div><strong>Parent:</strong> {{ result.parent.airport_code }}</div>
     {% endif %}
+    <div><strong>Duration (from parent):</strong> {{ result.duration }}</div>
   </div>
+  {% endif %}
+</div>
 {% endblock %}

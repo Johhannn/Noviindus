@@ -11,15 +11,32 @@ class Route(models.Model):
         return self.name
 
 
-class AirportNode(models.Model):
+class FlightNode(models.Model):
+    NODE_TYPE_CHOICES = (
+        ('root', 'Root'),
+        ('left', 'Left'),
+        ('right', 'Right'),
+    )
+
     route = models.ForeignKey(Route, on_delete=models.CASCADE, related_name='nodes')
     airport_code = models.CharField(max_length=10)
-    position = models.PositiveIntegerField()
-    duration = models.FloatField(help_text="Duration in minutes (to next node)")
-
+    duration = models.FloatField(help_text="Duration from parent node")
+    
+    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='child_nodes')
+    node_type = models.CharField(max_length=10, choices=NODE_TYPE_CHOICES, default='root')
+    
     class Meta:
-        unique_together = ('route', 'position')
-        ordering = ['route', 'position']
+        unique_together = ('parent', 'node_type')
 
     def __str__(self):
-        return f"{self.route.name} | {self.position}: {self.airport_code} ({self.duration}m)"
+        if self.parent:
+            return f"{self.airport_code} ({self.node_type} of {self.parent.airport_code}, {self.duration}km/min)"
+        return f"{self.airport_code} (Root)"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.node_type == 'root' and self.parent is not None:
+            raise ValidationError("Root node cannot have a parent.")
+        if self.node_type != 'root' and self.parent is None:
+            raise ValidationError("Non-root node must have a parent.")
+

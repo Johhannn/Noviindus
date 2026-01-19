@@ -1,11 +1,22 @@
 {% extends 'flights/base.html' %}
+
 {% block content %}
   <div class="card p-4">
     <h3>Add Airport Node</h3>
     <form method="post">{% csrf_token %}
       {{ form.as_p }}
+      
+      <div class="alert alert-light mt-3">
+          <small>
+          <strong>Instructions:</strong><br>
+          - To add a <strong>Root</strong> node, leave Parent empty and select 'Root' as Node Type.<br>
+          - To add a <strong>Child</strong> node, select a Parent and choose 'Left' or 'Right'.<br>
+          - Duration is the time/distance from the Parent node.
+          </small>
+      </div>
+
       <button class="btn btn-success">Add Node</button>
+      <a href="{% url 'flights:index' %}" class="btn btn-secondary">Cancel</a>
     </form>
-    <p class="mt-2 text-muted">Note: position must be unique per route; duration = minutes to next node.</p>
   </div>
 {% endblock %}

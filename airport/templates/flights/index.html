@@ -1,23 +1,36 @@
 {% extends 'flights/base.html' %}
+
 {% block content %}
-  <div class="card p-4">
-    <h3>Routes</h3>
-    {% if routes %}
-      <ul class="list-group">
-        {% for r in routes %}
-          <li class="list-group-item">
-            <strong>{{ r.name }}</strong>
-            <small class="text-muted"> — {{ r.nodes.count }} nodes</small>
-            <ul class="mt-2">
-              {% for n in r.nodes.all %}
-                <li>{{ n.position }}: {{ n.airport_code }} — {{ n.duration }}m</li>
-              {% endfor %}
-            </ul>
-          </li>
+<div class="card p-4">
+  <h3>Routes</h3>
+  <div class="mb-3">
+    <a href="{% url 'flights:create_route' %}" class="btn btn-sm btn-primary">Create Route</a>
+    <a href="{% url 'flights:add_node' %}" class="btn btn-sm btn-success">Add Node</a>
+  </div>
+
+  {% if routes %}
+  <ul class="list-group">
+    {% for r in routes %}
+    <li class="list-group-item">
+      <div class="d-flex justify-content-between">
+        <strong>{{ r.name }}</strong>
+        <span class="badge bg-secondary">{{ r.nodes.count }} nodes</span>
+      </div>
+      <ul class="mt-2 text-muted small">
+        {% for n in r.nodes.all %}
+        <li>
+          <strong>{{ n.airport_code }}</strong> ({{ n.get_node_type_display }})
+          {% if n.parent %} -> Parent: {{ n.parent.airport_code }}{% endif %}
+        </li>
+        {% empty %}
+        <li>No nodes.</li>
         {% endfor %}
       </ul>
-    {% else %}
-      <p>No routes yet. Use "Create Route" then "Add Node".</p>
-    {% endif %}
-  </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>No routes yet. Use "Create Route" then "Add Node".</p>
+  {% endif %}
+</div>
 {% endblock %}
